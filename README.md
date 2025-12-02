@@ -70,7 +70,7 @@ npm run preview      # 本地预览构建结果
 
 ## Cloudflare Pages 部署
 
-本项目支持部署到 Cloudflare Pages，代理功能通过 Cloudflare Functions 实现。
+本项目支持部署到 Cloudflare Pages，代理功能通过 Pages Functions 实现。
 
 ### 部署步骤
 
@@ -89,26 +89,52 @@ npm run preview      # 本地预览构建结果
    - 点击 "Create" → "Pages" → "Connect to Git"
    - 选择你的 GitHub 仓库
 
-3. **配置构建设置**
-   - Framework preset: `None` 或 `Vite`
-   - Build command: `npm run build`
-   - Build output directory: `dist`
-   - Node.js version: `18` 或更高
+3. **配置构建设置**（重要！）
+   - **Framework preset**: `None`（不要选择 Vite，避免使用默认的 Workers 配置）
+   - **Build command**: `npm run build`
+   - **Build output directory**: `dist`
+   - **Root directory**: `/`（默认）
+   - **Node.js version**: 在 Environment variables 中添加 `NODE_VERSION` = `18`
 
 4. **点击 "Save and Deploy"**
+
+### 项目结构说明
+
+```
+musicfree-h5-pages/
+├── dist/                    # 构建输出（静态文件）
+├── functions/               # Pages Functions（代理服务）
+│   └── api/
+│       └── proxy/
+│           └── [[path]].ts  # 处理 /api/proxy/* 请求
+├── public/
+│   └── _routes.json         # Pages Functions 路由配置
+└── wrangler.toml            # 本地开发配置（Pages 部署时不使用）
+```
 
 ### 代理说明
 
 | 环境 | 代理路径 | 处理方式 |
 |------|----------|----------|
 | 开发环境 | `/proxy/xxx/` | Vite 开发服务器代理 |
-| 生产环境 | `/api/proxy/xxx/` | Cloudflare Functions |
+| 生产环境 | `/api/proxy/xxx/` | Cloudflare Pages Functions |
+
+### 本地测试 Pages Functions
+
+```bash
+# 先构建项目
+npm run build
+
+# 使用 wrangler 启动本地 Pages 服务
+npx wrangler pages dev dist
+```
 
 ### Cloudflare 免费版限制
 
-- 每天 100,000 次请求
+- 每天 100,000 次 Functions 请求
 - 每次请求 10ms CPU 时间（通常足够）
 - 无带宽限制
+- 500 次部署/月
 
 ## 已知限制
 
