@@ -1,0 +1,132 @@
+# MusicFree H5
+
+一个“轻量级 + 插件驱动”的 Web 端音乐播放器，灵感来自原生应用版本的 [MusicFree](https://github.com/maotoumao/MusicFree)。核心理念仍然是不绑定任何音源，所有搜索与播放能力都通过插件脚本注入。
+
+> **注意**：本项目只提供播放器壳，不内置、不托管任何音源或第三方接口。
+
+## 能力概览
+
+- 📦 **多订阅源管理**：内置 `https://musicfreepluginshub.2020818.xyz/plugins.json`，支持输入任意符合 MusicFree 约定的 `plugins.json`。
+- 🔌 **插件生命周期管理**：安装、启用/停用、卸载均存储在 `localStorage`，刷新页面仍会保留。
+- 🌐 **远程脚本沙箱**：插件脚本通过 `fetch + Function` 注入，运行在受控上下文中，仅允许访问受限的 `fetch / console` 能力。
+- 🛡️ **内置 CORS/离线兜底**：订阅源或插件地址若因跨域失败，会自动在多条公共代理（直连、`cors.isomorphic-git.org`、`corsproxy.io`、`thingproxy.freeboard.io`、`r.jina.ai` 等）之间切换，全部失败后会回落到 `public/feeds.default.json` 这份本地备份。
+- 🎧 **搜索 + 播放**：选择已启用的插件后发起搜索，播放完全依赖插件提供的 `streamUrl` 或 `resolveStream`。
+- 🧩 **示例插件**：`public/plugins/demo.radio.js` 演示如何为 H5 版本编写插件，可直接通过“自定义插件”安装。
+
+## 快速开始
+
+```bash
+cd musicfree-h5
+cnpm install          # 或 npm install / pnpm install
+cnpm run dev          # 启动开发环境
+cnpm run build        # 生产构建
+cnpm run preview      # 本地预览构建结果
+```
+
+## 插件开发约定（H5 版）
+
+插件脚本需要在浏览器环境运行，推荐直接调用 `MusicFreeH5.registerPlugin` 注册实例：
+
+```js
+;(function () {
+  MusicFreeH5.registerPlugin(() => ({
+    name: 'Sample Plugin',
+    version: '0.1.0',
+    capabilities: ['search', 'stream'],
+    async searchSongs(query) {
+      const list = await fetchSongsFromSomewhere(query)
+      return list.map((item) => ({
+        id: item.id,
+        title: item.title,
+        artists: item.artists,
+        streamUrl: item.stream, // 没有的话可在 resolveStream 中再补
+      }))
+    },
+    async resolveStream(track) {
+      const { url } = await getPlayableUrl(track.id)
+      return { url }
+    },
+  }))
+})()
+```
+
+### 插件上下文
+
+注入时会提供以下受限能力：
+
+| 能力            | 说明                                   |
+| --------------- | -------------------------------------- |
+| `fetch`         | 等同于浏览器 `fetch`，不可使用 Node API |
+| `console`       | 自动带上插件前缀，便于调试             |
+| `descriptor`    | 订阅源中的 name/url/version 信息       |
+
+和原始 MusicFree 仓库的 Node 版插件不同，此处不支持 `require('axios')`、`cheerio` 等 Node 依赖，如果需要解析可以自己在浏览器环境实现。
+
+## 自定义插件
+
+1. 在“自定义插件”表单中填写名称与脚本 URL（可以是 CDN / object storage / 本地托管的 js 文件）。
+2. 点击“安装/更新”后即可在“已安装插件”列表中看到它，启用并选择后即可使用。
+3. 示例脚本：`/plugins/demo.radio.js`，直接粘贴到输入框即可体验。
+
+## Cloudflare Pages 部署
+
+本项目支持部署到 Cloudflare Pages，代理功能通过 Cloudflare Functions 实现。
+
+### 部署步骤
+
+1. **推送代码到 GitHub**
+   ```bash
+   git init
+   git add .
+   git commit -m "Initial commit"
+   git remote add origin https://github.com/YOUR_USERNAME/musicfree-h5.git
+   git push -u origin main
+   ```
+
+2. **在 Cloudflare Pages 创建项目**
+   - 登录 [Cloudflare Dashboard](https://dash.cloudflare.com/)
+   - 进入 "Workers & Pages"
+   - 点击 "Create" → "Pages" → "Connect to Git"
+   - 选择你的 GitHub 仓库
+
+3. **配置构建设置**
+   - Framework preset: `None` 或 `Vite`
+   - Build command: `npm run build`
+   - Build output directory: `dist`
+   - Node.js version: `18` 或更高
+
+4. **点击 "Save and Deploy"**
+
+### 代理说明
+
+| 环境 | 代理路径 | 处理方式 |
+|------|----------|----------|
+| 开发环境 | `/proxy/xxx/` | Vite 开发服务器代理 |
+| 生产环境 | `/api/proxy/xxx/` | Cloudflare Functions |
+
+### 支持的代理类型
+
+- **QQ 音乐**: `qqu`, `qqc`, `qqi`, `qqshc`
+- **网易云音乐**: `netease`, `neteaseapi`, `neteasem`
+- **酷狗音乐**: `kugou`, `kugousearch`, `kugoucomplex`, `kugouwww`
+- **酷我音乐**: `kuwo`, `kuwoapi`, `kuwosearch`
+- **咪咕音乐**: `migu`, `migum`, `miguapp`, `migucdn`
+- **B 站**: `bili`, `biliapi`
+- **其他**: `zz123`, `gequbao`, `suno`, `gitee`, `github` 等
+
+### Cloudflare 免费版限制
+
+- 每天 100,000 次请求
+- 每次请求 10ms CPU 时间（通常足够）
+- 无带宽限制
+
+## 已知限制
+
+- 大部分官方 MusicFree 插件依赖 Node.js 模块（如 axios、cheerio），不能直接在浏览器运行，需要针对 H5 版本重写。
+- 插件脚本目前共享页面上下文，不建议执行高危操作；如需进一步隔离，可将脚本改为 iframe/worker 方案。
+- 播放器只提供基础播放控制，没有实现完整队列/歌词/下载等能力，可在插件扩展中自行补充 UI。
+- 部分音乐 API 可能因 IP 限制无法正常工作。
+
+## 参考
+
+- [MusicFree 原生项目](https://github.com/maotoumao/MusicFree)：H5 版的交互、插件订阅源格式与其保持一致。
