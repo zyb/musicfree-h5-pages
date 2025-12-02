@@ -6,7 +6,7 @@
 
 ## 能力概览
 
-- 📦 **多订阅源管理**：内置 `https://musicfreepluginshub.2020818.xyz/plugins.json`，支持输入任意符合 MusicFree 约定的 `plugins.json`。
+- 📦 **多订阅源管理**：支持输入任意符合 MusicFree 约定的 `plugins.json`。
 - 🔌 **插件生命周期管理**：安装、启用/停用、卸载均存储在 `localStorage`，刷新页面仍会保留。
 - 🌐 **远程脚本沙箱**：插件脚本通过 `fetch + Function` 注入，运行在受控上下文中，仅允许访问受限的 `fetch / console` 能力。
 - 🛡️ **内置 CORS/离线兜底**：订阅源或插件地址若因跨域失败，会自动在多条公共代理（直连、`cors.isomorphic-git.org`、`corsproxy.io`、`thingproxy.freeboard.io`、`r.jina.ai` 等）之间切换，全部失败后会回落到 `public/feeds.default.json` 这份本地备份。
@@ -68,11 +68,27 @@ npm run preview      # 本地预览构建结果
 2. 点击“安装/更新”后即可在“已安装插件”列表中看到它，启用并选择后即可使用。
 3. 示例脚本：`/plugins/demo.radio.js`，直接粘贴到输入框即可体验。
 
-## Cloudflare Pages 部署
+## Cloudflare Workers 部署
 
-本项目支持部署到 Cloudflare Pages，代理功能通过 Pages Functions 实现。
+本项目支持部署到 Cloudflare Workers（Workers + Pages 已统一），代理功能通过 Worker 入口处理。
 
-### 部署步骤
+### 方式一：通过 Wrangler CLI 部署（推荐）
+
+```bash
+# 安装依赖
+npm install
+
+# 构建项目
+npm run build
+
+# 登录 Cloudflare（首次）
+npx wrangler login
+
+# 部署
+npx wrangler deploy
+```
+
+### 方式二：通过 GitHub 连接部署
 
 1. **推送代码到 GitHub**
    ```bash
@@ -83,33 +99,24 @@ npm run preview      # 本地预览构建结果
    git push -u origin main
    ```
 
-2. **在 Cloudflare Pages 创建项目**
+2. **在 Cloudflare 创建 Worker**
    - 登录 [Cloudflare Dashboard](https://dash.cloudflare.com/)
    - 进入 "Workers & Pages"
-   - 点击 "Create" → "Pages" → "Connect to Git"
-   - 选择你的 GitHub 仓库
+   - 点击 "Create" → 选择从 Git 仓库导入
 
-3. **配置构建设置**（重要！）
-   - **Framework preset**: `None`（不要选择 Vite，避免使用默认的 Workers 配置）
+3. **配置构建设置**
    - **Build command**: `npm run build`
-   - **Build output directory**: `dist`
-   - **Root directory**: `/`（默认）
-   - **Node.js version**: 在 Environment variables 中添加 `NODE_VERSION` = `18`
+   - **Deploy command**: 留空！
 
-4. **点击 "Save and Deploy"**
-
-### 项目结构说明
+### 项目结构
 
 ```
-musicfree-h5-pages/
-├── dist/                    # 构建输出（静态文件）
-├── functions/               # Pages Functions（代理服务）
-│   └── api/
-│       └── proxy/
-│           └── [[path]].ts  # 处理 /api/proxy/* 请求
-├── public/
-│   └── _routes.json         # Pages Functions 路由配置
-└── wrangler.toml            # 本地开发配置（Pages 部署时不使用）
+musicfree-h5/
+├── src/
+│   ├── worker.ts      # Worker 入口（处理 /api/proxy/*）
+│   └── ...            # React 前端代码
+├── dist/              # 构建输出（静态资源）
+└── wrangler.toml      # Workers 配置
 ```
 
 ### 代理说明
@@ -117,24 +124,13 @@ musicfree-h5-pages/
 | 环境 | 代理路径 | 处理方式 |
 |------|----------|----------|
 | 开发环境 | `/proxy/xxx/` | Vite 开发服务器代理 |
-| 生产环境 | `/api/proxy/xxx/` | Cloudflare Pages Functions |
-
-### 本地测试 Pages Functions
-
-```bash
-# 先构建项目
-npm run build
-
-# 使用 wrangler 启动本地 Pages 服务
-npx wrangler pages dev dist
-```
+| 生产环境 | `/api/proxy/xxx/` | Cloudflare Worker |
 
 ### Cloudflare 免费版限制
 
-- 每天 100,000 次 Functions 请求
-- 每次请求 10ms CPU 时间（通常足够）
+- 每天 100,000 次请求
+- 每次请求 10ms CPU 时间
 - 无带宽限制
-- 500 次部署/月
 
 ## 已知限制
 

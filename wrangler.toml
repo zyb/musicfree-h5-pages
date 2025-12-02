@@ -1,7 +1,13 @@
-# Cloudflare Pages 配置
-# 注意：通过 Git 部署时，构建设置在 Cloudflare Dashboard 中配置
-# 此文件仅用于本地开发测试 (wrangler pages dev dist)
-
+# Cloudflare Workers 配置 (Workers + Pages 统一平台)
 name = "musicfree-h5"
+main = "src/worker.ts"
 compatibility_date = "2024-01-01"
+
+# 静态资源目录
+[assets]
+directory = "./dist"
+
+# 本地开发设置
+[dev]
+port = 8788
 

@@ -1,7 +1,9 @@
-// Cloudflare Pages Function - CORS Proxy
-// 路由: /api/proxy/[proxyType]/[...path]
+// Cloudflare Worker 入口 - 处理 API 代理请求
+// 静态资源由 [assets] 配置自动处理
 
-interface Env {}
+export interface Env {
+  ASSETS: Fetcher
+}
 
 // 代理目标映射
 const proxyTargets: Record<string, { target: string; headers?: Record<string, string> }> = {
@@ -98,9 +100,8 @@ const commonHeaders: Record<string, string> = {
   'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
 }
 
-export const onRequest: PagesFunction<Env> = async (context) => {
-  const { request, params } = context
-  
+// 处理代理请求
+async function handleProxy(request: Request, pathname: string): Promise<Response> {
   // 处理 OPTIONS 预检请求
   if (request.method === 'OPTIONS') {
     return new Response(null, {
@@ -114,7 +115,7 @@ export const onRequest: PagesFunction<Env> = async (context) => {
   }
   
   // 解析路径: /api/proxy/[proxyType]/[...rest]
-  const pathParts = (params.path as string[]) || []
+  const pathParts = pathname.replace('/api/proxy/', '').split('/').filter(Boolean)
   const proxyType = pathParts[0]
   const targetPath = '/' + pathParts.slice(1).join('/')
   
@@ -200,5 +201,20 @@ export const onRequest: PagesFunction<Env> = async (context) => {
       },
     })
   }
+}
+
+export default {
+  async fetch(request: Request, env: Env): Promise<Response> {
+    const url = new URL(request.url)
+    const pathname = url.pathname
+    
+    // 处理 API 代理请求
+    if (pathname.startsWith('/api/proxy/')) {
+      return handleProxy(request, pathname)
+    }
+    
+    // 其他请求交给静态资源处理
+    return env.ASSETS.fetch(request)
+  },
 }
 
