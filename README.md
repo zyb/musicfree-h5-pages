@@ -17,10 +17,10 @@
 
 ```bash
 cd musicfree-h5
-cnpm install          # 或 npm install / pnpm install
-cnpm run dev          # 启动开发环境
-cnpm run build        # 生产构建
-cnpm run preview      # 本地预览构建结果
+npm install          # 或 npm install / pnpm install
+npm run dev          # 启动开发环境
+npm run build        # 生产构建
+npm run preview      # 本地预览构建结果
 ```
 
 ## 插件开发约定（H5 版）
@@ -103,16 +103,6 @@ cnpm run preview      # 本地预览构建结果
 |------|----------|----------|
 | 开发环境 | `/proxy/xxx/` | Vite 开发服务器代理 |
 | 生产环境 | `/api/proxy/xxx/` | Cloudflare Functions |
-
-### 支持的代理类型
-
-- **QQ 音乐**: `qqu`, `qqc`, `qqi`, `qqshc`
-- **网易云音乐**: `netease`, `neteaseapi`, `neteasem`
-- **酷狗音乐**: `kugou`, `kugousearch`, `kugoucomplex`, `kugouwww`
-- **酷我音乐**: `kuwo`, `kuwoapi`, `kuwosearch`
-- **咪咕音乐**: `migu`, `migum`, `miguapp`, `migucdn`
-- **B 站**: `bili`, `biliapi`
-- **其他**: `zz123`, `gequbao`, `suno`, `gitee`, `github` 等
 
 ### Cloudflare 免费版限制
 
